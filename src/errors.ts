@@ -17,3 +17,17 @@ export class GenericError extends Error {
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
+
+export class NotFoundError extends GenericError {
+  constructor(message = 'Not found') {
+    super(message, 404, 'NOT_FOUND');
+    this.name = 'NotFoundError';
+  }
+}
+
+export class AuthenticationError extends GenericError {
+  constructor(message: string) {
+    super(message, 401, '11401');
+    this.name = 'AuthenticationError';
+  }
+}
