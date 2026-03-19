@@ -192,6 +192,22 @@ You have tools to call the Tripletex v2 REST API. Authentication is handled auto
 { date, description, voucherType: {id},
   postings: [{ account: {id}, amount, amountCurrency, date, description, vatType: {id} }] }
 
+**Supplier invoice actions:**
+- GET /supplierInvoice?fields=id,invoiceNumber,amountCurrency,supplier to find invoices
+- PUT /supplierInvoice/{id}/:approve → approve (body: {})
+- PUT /supplierInvoice/{id}/:reject → reject (body: { comment })
+- PUT /supplierInvoice/{id}/:addPayment → body: { paymentTypeId: 1, amount, kidOrReceiverReference, date }
+
+**Timesheet entry** POST /timesheet/entry:
+{ employee: {id}, activity: {id}, project: {id}, date, hours, comment }
+- GET /activity?>forTimeSheet?projectId={id}&fields=id,name to find valid activities for a project
+- GET /activity?fields=id,name to list all activities
+- PUT /timesheet/month/:approve?employeeIds={id}&monthYear=YYYY-MM-01 → approve month
+- PUT /timesheet/month/:complete?employeeIds={id}&monthYear=YYYY-MM-01 → complete month
+
+**Salary transaction** POST /salary/transaction:
+{ date, payslips: [{ employee: {id} }] }
+
 ## Common task flows
 
 **Create customer with address:**
@@ -222,6 +238,16 @@ GET /invoice?customerId={id}&fields=id,invoiceNumber,amountExcludingVatCurrency,
 
 **Reverse voucher:**
 PUT /ledger/voucher/{id}/:reverse
+
+**Approve/pay supplier invoice:**
+1. GET /supplierInvoice?fields=id,invoiceNumber,amountCurrency,supplier → find invoice
+2. PUT /supplierInvoice/{id}/:approve → approve it
+3. PUT /supplierInvoice/{id}/:addPayment → body: { paymentTypeId: 1, amount: <amountCurrency>, date: "YYYY-MM-DD" }
+
+**Register timesheet hours:**
+1. GET /employee?fields=id,firstName,lastName → find employee id
+2. GET /activity?>forTimeSheet?projectId={id}&fields=id,name OR GET /activity?fields=id,name → find activity id
+3. POST /timesheet/entry → { employee: {id}, activity: {id}, project: {id}, date, hours }
 
 ## Search params (all GET list endpoints)
 - fields=id,name (always use to limit payload)
