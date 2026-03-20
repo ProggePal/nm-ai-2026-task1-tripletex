@@ -370,25 +370,48 @@ const REPLAY_HTML = `<!DOCTYPE html>
 </div>
 
 <script>
-const STEP_DELAY = 800;  // ms between chat messages
-const PAUSE_AFTER = 5000; // ms pause after replay finishes before restarting
+const STEP_DELAY = 1500; // ms between chat messages (base)
+const PAUSE_AFTER = 6000; // ms pause after replay finishes before restarting
+const NEW_RUN_CHECK_INTERVAL = 8000; // check for new runs during replay
 let events = [];
 let runMeta = {};
 let currentRun = null;
+let latestKnown = null; // track the latest filename we know about
+let abortReplay = false; // signal to interrupt current replay
+
+// Always fetch the latest run filename
+async function fetchLatestFilename() {
+  try {
+    const res = await fetch('/api/runs');
+    const runs = await res.json();
+    if (runs.length === 0) return null;
+    return runs[0].filename;
+  } catch { return null; }
+}
 
 async function loadLatestRun() {
-  const res = await fetch('/api/runs');
-  const runs = await res.json();
-  if (runs.length === 0) return null;
+  const latest = await fetchLatestFilename();
+  if (!latest) return null;
+  latestKnown = latest;
+  if (latest === currentRun) return null;
 
-  const latest = runs[0];
-  if (latest.filename === currentRun) return null; // same run
-
-  const detail = await fetch('/api/runs/' + latest.filename);
+  const detail = await fetch('/api/runs/' + latest);
   const data = await detail.json();
-  currentRun = latest.filename;
-  return { summary: latest, detail: data };
+  const res2 = await fetch('/api/runs');
+  const runs = await res2.json();
+  const summary = runs.find(r => r.filename === latest);
+  currentRun = latest;
+  return { summary, detail: data };
 }
+
+// Background poller: check for new runs and interrupt replay if found
+setInterval(async () => {
+  const latest = await fetchLatestFilename();
+  if (latest && latest !== latestKnown && latest !== currentRun) {
+    latestKnown = latest;
+    abortReplay = true; // signal the playing loop to stop
+  }
+}, NEW_RUN_CHECK_INTERVAL);
 
 function parseEvents(data) {
   const evts = [];
@@ -482,8 +505,18 @@ async function playReplay() {
   const chat = document.getElementById('chat');
   chat.innerHTML = '';
 
+  abortReplay = false;
+
   // Play events one by one
   for (let i = 0; i < events.length; i++) {
+    // Check if a new run arrived — interrupt and switch
+    if (abortReplay) {
+      abortReplay = false;
+      currentRun = null;
+      playReplay();
+      return;
+    }
+
     const ev = events[i];
     const html = renderEvent(ev);
     if (!html) continue;
@@ -494,21 +527,23 @@ async function playReplay() {
     // Update progress
     document.getElementById('progress').style.width = ((i + 1) / events.length * 100) + '%';
 
-    // Variable delay: shorter for search/results, longer for tools/text
+    // Variable delay: longer for readability
     let delay = STEP_DELAY;
-    if (ev.type === 'search') delay = 200;
-    else if (ev.type === 'result') delay = 400;
-    else if (ev.type === 'error') delay = 1000;
-    else if (ev.type === 'assistant') delay = 1500;
-    else if (ev.type === 'user') delay = 2000;
-    else if (ev.type === 'verify') delay = 2000;
+    if (ev.type === 'search') delay = 500;
+    else if (ev.type === 'result') delay = 1200;
+    else if (ev.type === 'tool') delay = 1800;
+    else if (ev.type === 'error') delay = 2500;
+    else if (ev.type === 'assistant') delay = 3000;
+    else if (ev.type === 'user') delay = 3500;
+    else if (ev.type === 'verify') delay = 4000;
+    else if (ev.type === 'system') delay = 1500;
 
     await sleep(delay);
   }
 
   // Done — show restart notice
   document.getElementById('status-dot').className = 'live-dot paused';
-  chat.insertAdjacentHTML('beforeend', '<div class="restart-notice">Replay complete — restarting in 5s...</div>');
+  chat.insertAdjacentHTML('beforeend', '<div class="restart-notice">Replay complete — restarting...</div>');
   chat.scrollTop = chat.scrollHeight;
 
   await sleep(PAUSE_AFTER);
