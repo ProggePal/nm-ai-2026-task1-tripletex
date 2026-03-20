@@ -5,7 +5,8 @@
     "start": "bun run src/index.ts",
     "dev": "bun --watch src/index.ts",
     "solve": "bun scripts/solve.ts",
-    "solve:local": "bun scripts/solve.ts --local"
+    "solve:local": "bun scripts/solve.ts --local",
+    "test-all": "bun scripts/test-all.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

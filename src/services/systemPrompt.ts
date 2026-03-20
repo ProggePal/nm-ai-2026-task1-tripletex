@@ -48,12 +48,17 @@ You have tools to call the Tripletex v2 REST API. Authentication is handled auto
 { order: {id}, product: {id}, description, count, unitPriceExcludingVatCurrency,
   discount, vatType: {id} }
 - "count" is quantity (not "quantity")
+- For standard Norwegian services/goods: GET /ledger/vatType?fields=id,name,number first,
+  pick the outgoing high-rate VAT (number "3", name contains "Utgående avgift, høy sats")
+- Only omit vatType if explicitly told "no VAT" or "MVA-fri"
 
 **Invoice actions:**
-- PUT /order/{id}/:invoice → converts order to invoice, returns { value: { id } }
+- PUT /order/{id}/:invoice?invoiceDate=YYYY-MM-DD → converts order to invoice, returns { value: { id } }
 - PUT /invoice/{id}/:send?sendType=EMAIL&overrideEmailAddress=x@y.com → send
-- PUT /invoice/{id}/:payment → body: { paymentTypeId: 1, paidAmount: <full amount>, date: "YYYY-MM-DD" }
-  - paymentTypeId 1 = bank transfer (most common)
+- PUT /invoice/{id}/:payment?paymentTypeId={id}&paidAmount={amount}&paymentDate=YYYY-MM-DD → register payment
+  ALL THREE ARE QUERY PARAMS (not body). Body must be {}.
+  paymentTypeId is company-specific — always GET /invoice/paymentType first to find correct id.
+  GET /invoice/paymentType returns [{id, description}] — pick the bank/transfer type.
 - PUT /invoice/{id}/:createCreditNote → creates credit note
 
 **Travel expense** POST /travelExpense:
@@ -103,12 +108,14 @@ POST /customer → { name, organizationNumber, email,
 GET /customer?organizationNumber=123456789&fields=id,name
 
 **Find invoice by customer:**
-GET /invoice?customerId={id}&fields=id,invoiceNumber,amountCurrency,amountExcludingVatCurrency,amountOutstanding
+GET /invoice?customerId={id}&invoiceDateFrom=2020-01-01&invoiceDateTo=2030-01-01&fields=id,invoiceNumber,amountCurrency,amountExcludingVatCurrency,amountOutstanding
+IMPORTANT: invoiceDateFrom AND invoiceDateTo are REQUIRED — omitting them returns 422.
 
 **Register full payment on invoice:**
 1. GET /customer?organizationNumber=X&fields=id,name → get customer id
-2. GET /invoice?customerId={id}&fields=id,amountCurrency,amountOutstanding → find invoice
-3. PUT /invoice/{id}/:payment → { paymentTypeId: 1, paidAmount: <amountCurrency>, date: "YYYY-MM-DD" }
+2. GET /invoice?customerId={id}&invoiceDateFrom=2020-01-01&invoiceDateTo=2030-01-01&fields=id,amountCurrency,amountOutstanding → find unpaid invoice (amountOutstanding > 0)
+3. GET /invoice/paymentType → find payment type id (pick bank/transfer type)
+4. PUT /invoice/{id}/:payment?paymentTypeId={id}&paidAmount={amountCurrency}&paymentDate=YYYY-MM-DD body: {}
 
 **Create invoice and send:**
 1. POST /order → { customer: {id}, orderDate, deliveryDate }
@@ -150,7 +157,8 @@ Always use batch endpoints when creating more than one of the same resource.
 4. Read error messages carefully and fix correctly on first retry
 5. Minimize total API calls — combine lookups when possible
 
-The task prompt may be in Norwegian, English, Spanish, Portuguese, Nynorsk, German, or French.
+The task prompt may be in any language including Norwegian, Nynorsk, Sami, English, or others.
+If the language is unfamiliar, translate the prompt to Norwegian internally first, then execute the task.
 Complete the task fully then stop.`,
   cache_control: { type: 'ephemeral' },
 };
