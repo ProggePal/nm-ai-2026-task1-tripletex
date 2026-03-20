@@ -48,6 +48,9 @@ Authentication is handled automatically — just call the tools.
 { name (R), number, description, costExcludingVatCurrency, priceExcludingVatCurrency,
   vatType: {id}, productUnit: {id}, isInactive }
 - Only name is required. Always GET /ledger/vatType?fields=id,name first to find correct VAT type id.
+- ALWAYS search for existing products before creating: GET /product?number=XXXX&fields=id,name,number
+  Competition accounts often have pre-existing products. Creating a duplicate number returns 422.
+- Search products ONE AT A TIME by number — array search like productNumber=["X","Y"] does NOT work.
 
 **Order** POST /order:
 { customer: {id} (R), orderDate (R), deliveryDate (R), department: {id}, project: {id},
@@ -100,6 +103,7 @@ Authentication is handled automatically — just call the tools.
 - travelExpense, amountCurrencyIncVat, and paymentType are REQUIRED.
 - category is a STRING (e.g. "Fly", "Taxi", "Hotell") — NOT an object with {id}.
 - paymentType is an OBJECT with {id} — look up with tripletex_travel_expense_payment_type_search.
+- IMPORTANT: Create costs ONE AT A TIME, sequentially. Parallel creation causes 409 RevisionException.
 
 **Per diem (diett/dagpenger)** POST /travelExpense/perDiemCompensation:
 { travelExpense: {id} (R), rateCategory: {id} (R), location, count, rate, overnightAccommodation }
@@ -145,37 +149,20 @@ Do steps 1-4 in parallel to save time.
 - Free accounting dimensions on postings use: freeAccountingDimension1, freeAccountingDimension2, freeAccountingDimension3
   NOT "accountingDimensionValue1", "freeDimension1", or "dimension1" — those all fail with 422.
 
-**Supplier/incoming invoice — register new invoice:**
-Use tripletex_incoming_invoice_create (preloaded, no tool_search needed):
-{
-  invoiceHeader: {
-    vendorId: <supplier id>,
-    invoiceDate: "YYYY-MM-DD",
-    dueDate: "YYYY-MM-DD",
-    invoiceNumber: "INV-XXX",
-    invoiceAmount: <total amount incl VAT>,
-    currencyId: 1,
-    description: "description"
-  },
-  orderLines: [{
-    row: 1,
-    description: "line description",
-    accountId: <account id>,
-    amountInclVat: <amount incl VAT>,
-    vatTypeId: <vat type id>
-  }]
-}
-CRITICAL: field names use flat IDs (vendorId, accountId, vatTypeId, currencyId) — NOT nested objects like {id: N}.
-amountInclVat is the gross amount including VAT on the order line.
-If the total is 62600 incl 25% VAT: amountInclVat=62600, vatTypeId=<incoming high rate VAT id>.
-
-**Supplier invoice via VOUCHER fallback** (if incomingInvoice fails or 403):
-For supplier invoices, use a voucher with these postings:
-  - Row 1: Expense account (e.g. 6860), amount = NET amount (excl VAT), vatType = incoming VAT type
-  - Row 2: Accounts payable 2400, amount = -GROSS amount (incl VAT), supplier: {id}
-Tripletex auto-calculates VAT when vatType is set. Do NOT manually split VAT to account 2710.
-Use "amount" field (not "amountGross" or "amountGrossCurrency" — those don't exist on Posting).
-GET /ledger/vatType?typeOfVat=INCOMING&fields=id,name,percentage to find incoming VAT types.
+**Register supplier/incoming invoice — use VOUCHER (not the BETA incomingInvoice endpoint):**
+Do NOT use tripletex_incoming_invoice_create — it is a BETA endpoint and may return 403 or fail.
+Instead, always register supplier invoices as a voucher:
+1. Find/create the supplier: GET /supplier?organizationNumber=X or POST /supplier
+2. Find expense account: GET /ledger/account?number=XXXX&fields=id,number,name
+3. Find accounts payable: GET /ledger/account?number=2400&fields=id,number,name
+4. Find incoming VAT type: GET /ledger/vatType?typeOfVat=INCOMING&fields=id,name,percentage
+   Pick the one matching the VAT rate (e.g. 25% = "Inngående avgift, høy sats")
+5. POST /ledger/voucher with these postings:
+   - Row 1: expense account, amount = NET amount (excl VAT), vatType = incoming VAT type {id}
+   - Row 2: account 2400 (leverandørgjeld), amount = -GROSS amount (incl VAT), supplier: {id}
+   Tripletex auto-calculates the VAT posting when vatType is set. Do NOT manually add a VAT row.
+   Use "amount" field (not "amountGross" — that doesn't exist on Posting).
+   Include vendorInvoiceNumber on the voucher for the invoice reference number.
 
 **Supplier invoice actions (existing invoices):**
 - GET /supplierInvoice?fields=id,invoiceNumber,amountCurrency,supplier → find invoices
