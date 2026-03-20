@@ -88,47 +88,79 @@ export async function runAgent(
           mcp_server_name: 'tripletex',
           default_config: { defer_loading: true },
           configs: {
-            // Preload commonly used tools to reduce tool_search calls
+            // Preload all commonly needed tools to eliminate tool_search calls
+            // -- Customers --
             tripletex_customer_search: { defer_loading: false },
             tripletex_customer_create: { defer_loading: false },
             tripletex_customer_delete: { defer_loading: false },
+            tripletex_customer_update: { defer_loading: false },
+            // -- Employees --
             tripletex_employee_search: { defer_loading: false },
             tripletex_employee_create: { defer_loading: false },
             tripletex_employee_update: { defer_loading: false },
             tripletex_employee_entitlement_grant_entitlements_by_template: { defer_loading: false },
+            // -- Invoicing --
+            tripletex_invoice_search: { defer_loading: false },
             tripletex_invoice_create: { defer_loading: false },
             tripletex_invoice_payment: { defer_loading: false },
             tripletex_invoice_send: { defer_loading: false },
+            tripletex_invoice_create_credit_note: { defer_loading: false },
+            tripletex_invoice_payment_type_search: { defer_loading: false },
+            // -- Orders --
             tripletex_order_create: { defer_loading: false },
             tripletex_order_orderline_create: { defer_loading: false },
             tripletex_order_orderline_list: { defer_loading: false },
             tripletex_order_invoice: { defer_loading: false },
             tripletex_order_invoice_multiple_orders: { defer_loading: false },
+            // -- Products --
             tripletex_product_search: { defer_loading: false },
             tripletex_product_create: { defer_loading: false },
+            // -- Departments --
             tripletex_department_search: { defer_loading: false },
             tripletex_department_create: { defer_loading: false },
+            // -- Projects --
             tripletex_project_search: { defer_loading: false },
             tripletex_project_create: { defer_loading: false },
+            // -- Timesheet --
             tripletex_activity_for_time_sheet: { defer_loading: false },
+            tripletex_activity_search: { defer_loading: false },
             tripletex_timesheet_entry_create: { defer_loading: false },
+            // -- Travel expenses --
             tripletex_travel_expense_create: { defer_loading: false },
+            tripletex_travel_expense_search: { defer_loading: false },
+            tripletex_travel_expense_delete: { defer_loading: false },
             tripletex_travel_expense_cost_create: { defer_loading: false },
             tripletex_travel_expense_mileage_allowance_create: { defer_loading: false },
             tripletex_travel_expense_per_diem_compensation_create: { defer_loading: false },
             tripletex_travel_expense_payment_type_search: { defer_loading: false },
+            tripletex_travel_expense_rate_category_search: { defer_loading: false },
+            tripletex_travel_expense_rate_category_group_search: { defer_loading: false },
+            // -- Ledger / Accounting --
             tripletex_ledger_voucher_create: { defer_loading: false },
+            tripletex_ledger_voucher_reverse: { defer_loading: false },
+            tripletex_ledger_voucher_delete: { defer_loading: false },
+            tripletex_ledger_voucher_search: { defer_loading: false },
             tripletex_ledger_vat_type_search: { defer_loading: false },
             tripletex_ledger_account_search: { defer_loading: false },
             tripletex_ledger_account_update: { defer_loading: false },
+            tripletex_ledger_posting_search: { defer_loading: false },
+            // -- Accounting dimensions --
+            tripletex_accounting_dimension_name_search: { defer_loading: false },
+            tripletex_accounting_dimension_name_create: { defer_loading: false },
+            tripletex_accounting_dimension_value_search: { defer_loading: false },
+            tripletex_accounting_dimension_value_create: { defer_loading: false },
+            // -- Supplier / Incoming invoices --
+            tripletex_supplier_search: { defer_loading: false },
+            tripletex_supplier_create: { defer_loading: false },
             tripletex_supplier_invoice_search: { defer_loading: false },
             tripletex_supplier_invoice_approve: { defer_loading: false },
-            tripletex_supplier_create: { defer_loading: false },
-            tripletex_supplier_search: { defer_loading: false },
             tripletex_incoming_invoice_create: { defer_loading: false },
-            tripletex_invoice_payment_type_search: { defer_loading: false },
+            // -- Salary --
             tripletex_salary_type_search: { defer_loading: false },
             tripletex_salary_transaction_create: { defer_loading: false },
+            // -- Company --
+            tripletex_company_get: { defer_loading: false },
+            tripletex_company_update: { defer_loading: false },
           },
         },
       ],
