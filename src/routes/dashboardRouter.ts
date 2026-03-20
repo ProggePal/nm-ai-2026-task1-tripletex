@@ -535,24 +535,33 @@ function renderEvent(ev) {
 
 async function playReplay() {
  try {
+  const chatEl = document.getElementById('chat');
   // Always fetch the latest run
-  const latest = await fetchLatestFilename();
+  chatEl.innerHTML = '<div class="waiting">Fetching runs...<span class="dots"></span></div>';
+  let latest;
+  try { latest = await fetchLatestFilename(); } catch(e) {
+    chatEl.innerHTML = '<div class="waiting">Error fetching runs: ' + e + '. Retrying...</div>';
+    setTimeout(playReplay, 5000); return;
+  }
   if (!latest) {
-    document.getElementById('chat').innerHTML = '<div class="waiting">No runs yet. Submit a task to see the replay.<span class="dots"></span></div>';
+    chatEl.innerHTML = '<div class="waiting">No runs yet. Submit a task to see the replay.<span class="dots"></span></div>';
     setTimeout(playReplay, 5000);
     return;
   }
 
-  // Load it (even if same as before — we replay in a loop)
+  chatEl.innerHTML = '<div class="waiting">Loading run ' + latest + '...<span class="dots"></span></div>';
   let run;
   try {
     run = await fetchRunDetail(latest);
   } catch (e) {
-    console.error('Failed to load run:', e);
+    chatEl.innerHTML = '<div class="waiting">Error loading detail: ' + e + '. Retrying...</div>';
     setTimeout(playReplay, 5000);
     return;
   }
-  if (!run || !run.detail) { setTimeout(playReplay, 5000); return; }
+  if (!run || !run.detail) {
+    chatEl.innerHTML = '<div class="waiting">Empty run data. Retrying...</div>';
+    setTimeout(playReplay, 5000); return;
+  }
 
   playingRun = latest;
   abortReplay = false;
@@ -641,19 +650,28 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 
 // ── Minecraft Audio Engine (Web Audio API — no files needed) ──
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
+function getAudio() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  return audioCtx;
+}
 
 function playTone(freq, duration, type, vol) {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = type || 'square';
-  osc.frequency.value = freq;
-  gain.gain.value = vol || 0.08;
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + duration);
+  try {
+    const ctx = getAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'square';
+    osc.frequency.value = freq;
+    gain.gain.value = vol || 0.08;
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) { /* audio not available */ }
 }
 
 function sfxDamage() {
