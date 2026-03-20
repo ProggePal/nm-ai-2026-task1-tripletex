@@ -55,6 +55,9 @@ Authentication is handled automatically — just call the tools.
 { order: {id} (R), product: {id}, description, count, unitPriceExcludingVatCurrency,
   discount, vatType: {id} }
 - order is REQUIRED. "count" is quantity (not "quantity").
+- IMPORTANT: Create order lines ONE AT A TIME, sequentially — NOT in parallel.
+  Parallel order line creation causes 409 RevisionException due to optimistic locking on the order.
+  Use POST /order/orderline/list to batch-create multiple lines in one call instead.
 - For standard Norwegian services/goods: GET /ledger/vatType?fields=id,name,number first,
   pick the outgoing high-rate VAT (number "3", name contains "Utgående avgift, høy sats")
 - Only omit vatType if explicitly told "no VAT" or "MVA-fri"
@@ -82,12 +85,31 @@ Authentication is handled automatically — just call the tools.
   Do NOT use departureDateFrom, returnDateTo, or similar — they are NOT valid field names and return 400.
 
 **TravelExpense cost** POST /travelExpense/cost:
-{ travelExpense: {id} (R), category: {id}, amountCurrencyIncVat (R), paymentType: {id} (R) }
-- travelExpense, amountCurrencyIncVat, and paymentType are all REQUIRED.
+{ travelExpense: {id} (R), category: {id} (R), amountCurrencyIncVat (R), paymentType: {id} (R), date, comments }
+- travelExpense, category, amountCurrencyIncVat, and paymentType are all REQUIRED.
+- category is an OBJECT with {id} — NOT a string name. You MUST look up the category id first.
+- paymentType is an OBJECT with {id} — look up with tripletex_travel_expense_payment_type_search.
+- To find cost categories: use tool_search for "travel expense rate category" to discover the category search endpoint.
+
+**Per diem (diett/dagpenger)** POST /travelExpense/perDiemCompensation:
+{ travelExpense: {id} (R), rateCategory: {id} (R), countryCode, overnightAccommodation, location, address, count, rate }
+- rateCategory is REQUIRED — look up with tripletex_travel_expense_rate_category_search or tool_search.
+- For Norwegian domestic travel: use countryCode "NO"
+- overnightAccommodation: "HOTEL", "BOARDING_HOUSE_WITHOUT_COOKING", "BOARDING_HOUSE_WITH_COOKING", "NONE"
+- count = number of days, rate = daily rate
 
 **MileageAllowance** POST /travelExpense/mileageAllowance:
 { travelExpense: {id} (R), date (R), departureLocation (R), destination (R), km, isCompanyCar }
 - travelExpense, date, departureLocation, and destination are all REQUIRED.
+
+**Travel expense full lookup sequence:**
+1. Find employee: tripletex_employee_search
+2. Find payment type: tripletex_travel_expense_payment_type_search?showOnEmployeeExpenses=true
+3. Create travel expense: tripletex_travel_expense_create
+4. For costs: look up category IDs first, then tripletex_travel_expense_cost_create with category: {id}
+5. For per diem: look up rate categories first, then tripletex_travel_expense_per_diem_compensation_create
+6. For mileage: tripletex_travel_expense_mileage_allowance_create
+Do steps 1-2 in parallel to save time.
 
 **Project** POST /project:
 { name, number, projectManager: {id} (R), customer: {id}, startDate, endDate,
