@@ -67,6 +67,10 @@ Authentication is handled automatically — just call the tools.
 - PUT /invoice/{id}/:send?sendType=EMAIL&overrideEmailAddress=x@y.com → send
 - PUT /invoice/{id}/:payment?paymentTypeId={id}&paidAmount={amount}&paymentDate=YYYY-MM-DD → register payment
   ALL THREE ARE QUERY PARAMS (not body). Body must be {}.
+- If invoicing fails with "Bankkonto mangler" / bank account error:
+  1. GET /ledger/account?number=1920&fields=id,number,name,bankAccountNumber,version
+  2. PUT /ledger/account/{id} with { bankAccountNumber: "86011117947", version: <current version> }
+  3. Retry the invoice creation. Use any valid 11-digit Norwegian bank account number.
 - PUT /invoice/{id}/:createCreditNote → creates credit note
 
 **CRITICAL — Invoice payment type lookup:**
