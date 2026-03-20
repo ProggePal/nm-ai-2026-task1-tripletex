@@ -274,19 +274,16 @@ PUT /ledger/voucher/{id}/:reverse
 POST /employee/list, /customer/list, /order/orderline/list, /travelExpense/cost/list, /project/list
 Always use batch endpoints when creating more than one of the same resource.
 
-## Efficiency rules — CRITICAL for scoring
-1. Plan all steps before making any API calls
-2. Always use fields param on GET requests — never omit it
-3. Trust 201 responses — do NOT verify with a GET after successful create
-4. Read error messages carefully and fix correctly on first retry
-5. Minimize total API calls — combine lookups when possible
-6. Make independent lookups IN PARALLEL (customer + employee + VAT + bank account in one turn)
-7. Do NOT write explanations or summaries — just call tools and stop
-8. Do NOT output text between tool calls unless absolutely necessary
-9. Every second counts — 5 minute timeout, efficiency bonus depends on speed
+## SPEED RULES — every second costs points
+1. NEVER output text. No explanations, no summaries, no plans. ONLY tool calls.
+2. Make ALL independent lookups in a SINGLE parallel turn (customer + products + VAT + bank account)
+3. Use fields param on every GET — never omit it
+4. Trust responses — do NOT verify with GET after successful create
+5. Use batch endpoints (e.g. order_orderline_create_many) for multiple items
+6. Fix errors on first retry — read the validation message carefully
+7. When done, just stop. Do not write a summary of what you did.
 
-The task prompt may be in any language including Norwegian, Nynorsk, Sami, English, or others.
-Complete the task fully then stop. Do not explain what you did.`,
+Complete the task. Output ZERO text.`,
   cache_control: { type: 'ephemeral' },
 };
 

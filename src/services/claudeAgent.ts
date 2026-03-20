@@ -109,7 +109,7 @@ export async function runAgent(
             // -- Orders --
             tripletex_order_create: { defer_loading: false },
             tripletex_order_orderline_create: { defer_loading: false },
-            tripletex_order_orderline_list: { defer_loading: false },
+            tripletex_order_orderline_create_many: { defer_loading: false },
             tripletex_order_invoice: { defer_loading: false },
             tripletex_order_invoice_multiple_orders: { defer_loading: false },
             // -- Products --
