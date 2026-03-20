@@ -253,7 +253,7 @@ export async function verifySandboxResult(
   result: AgentResult
 ): Promise<{ verified: boolean; summary: string }> {
   const response = await claude.messages.create({
-    model: 'claude-haiku-4-5',
+    model: 'claude-opus-4-6',
     max_tokens: 512,
     system: 'You are verifying whether an accounting task was completed successfully in Tripletex. Be concise.',
     messages: [
