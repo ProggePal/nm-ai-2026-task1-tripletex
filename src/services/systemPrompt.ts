@@ -88,23 +88,25 @@ Authentication is handled automatically — just call the tools.
   The IDs are company-specific — ALWAYS call GET /invoice/paymentType first, never guess IDs.
 
 **Travel expense** POST /travelExpense:
-{ employee: {id} (R), title, description, project: {id}, department: {id} }
+{ employee: {id} (R), title, travelDetails: { departureDate, returnDate }, project: {id}, department: {id} }
 - Only employee is REQUIRED. title is the display name.
-- Search: GET /travelExpense?employeeId={id}&fields=id,title,date,state — valid fields are:
-  id, title, date, state, number, employee, department, project, isCompleted, isApproved, amount
-  Do NOT use departureDateFrom, returnDateTo, or similar — they are NOT valid field names and return 400.
+- CRITICAL: If adding per diem, you MUST include travelDetails with departureDate and returnDate
+  at creation time. These cannot be added later (update fails). So always include them:
+  { employee: {id}, title: "...", travelDetails: { departureDate: "YYYY-MM-DD", returnDate: "YYYY-MM-DD" } }
+- Search: GET /travelExpense?employeeId={id}&fields=id,title,date,state
 
 **TravelExpense cost** POST /travelExpense/cost:
-{ travelExpense: {id} (R), category: {id} (R), amountCurrencyIncVat (R), paymentType: {id} (R), date, comments }
-- travelExpense, category, amountCurrencyIncVat, and paymentType are all REQUIRED.
-- category is an OBJECT with {id} — NOT a string name. You MUST look up the category id first.
+{ travelExpense: {id} (R), amountCurrencyIncVat (R), paymentType: {id} (R), category (string), date, comments }
+- travelExpense, amountCurrencyIncVat, and paymentType are REQUIRED.
+- category is a STRING (e.g. "Fly", "Taxi", "Hotell") — NOT an object with {id}.
 - paymentType is an OBJECT with {id} — look up with tripletex_travel_expense_payment_type_search.
-- To find cost categories: use tool_search for "travel expense rate category" to discover the category search endpoint.
 
 **Per diem (diett/dagpenger)** POST /travelExpense/perDiemCompensation:
-{ travelExpense: {id} (R), rateCategory: {id} (R), countryCode, overnightAccommodation, location, address, count, rate }
-- rateCategory is REQUIRED — look up with tripletex_travel_expense_rate_category_search or tool_search.
-- For Norwegian domestic travel: use countryCode "NO"
+{ travelExpense: {id} (R), rateCategory: {id} (R), location, count, rate, overnightAccommodation }
+- rateCategory is REQUIRED — look up with tripletex_travel_expense_rate_category_search.
+  Use tripletex_travel_expense_rate_category_group_search first to find the group for domestic travel (isForeignTravel=false).
+  Then tripletex_travel_expense_rate_category_search with type=PER_DIEM and the group id.
+- Do NOT use countryCode — it causes "Country not enabled for travel expense" error.
 - overnightAccommodation: "HOTEL", "BOARDING_HOUSE_WITHOUT_COOKING", "BOARDING_HOUSE_WITH_COOKING", "NONE"
 - count = number of days, rate = daily rate
 
@@ -112,14 +114,15 @@ Authentication is handled automatically — just call the tools.
 { travelExpense: {id} (R), date (R), departureLocation (R), destination (R), km, isCompanyCar }
 - travelExpense, date, departureLocation, and destination are all REQUIRED.
 
-**Travel expense full lookup sequence:**
-1. Find employee: tripletex_employee_search
-2. Find payment type: tripletex_travel_expense_payment_type_search?showOnEmployeeExpenses=true
-3. Create travel expense: tripletex_travel_expense_create
-4. For costs: look up category IDs first, then tripletex_travel_expense_cost_create with category: {id}
-5. For per diem: look up rate categories first, then tripletex_travel_expense_per_diem_compensation_create
-6. For mileage: tripletex_travel_expense_mileage_allowance_create
-Do steps 1-2 in parallel to save time.
+**Travel expense full sequence:**
+1. tripletex_employee_search — find employee
+2. tripletex_travel_expense_payment_type_search?showOnEmployeeExpenses=true — find payment type
+3. tripletex_travel_expense_rate_category_group_search?isForeignTravel=false — find domestic group
+4. tripletex_travel_expense_rate_category_search?type=PER_DIEM&travelReportRateCategoryGroupId={groupId} — find per diem rate
+5. tripletex_travel_expense_create with travelDetails (departureDate + returnDate)
+6. tripletex_travel_expense_per_diem_compensation_create with rateCategory: {id}
+7. tripletex_travel_expense_cost_create for each cost (flight, taxi, etc.)
+Do steps 1-4 in parallel to save time.
 
 **Project** POST /project:
 { name, number, projectManager: {id} (R), startDate (R), customer: {id}, endDate,
