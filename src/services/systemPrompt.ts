@@ -103,8 +103,12 @@ Authentication is handled automatically — just call the tools.
 
 **Voucher** POST /ledger/voucher:
 { date (R), description (R), voucherType: {id},
-  postings (R): [{ account: {id}, amount, amountCurrency, date, description, vatType: {id} }] }
+  postings (R): [{ account: {id}, amount, date, description, row, vatType: {id},
+    freeAccountingDimension1: {id}, freeAccountingDimension2: {id}, freeAccountingDimension3: {id} }] }
 - date, description, and postings are all REQUIRED.
+- Each posting MUST have a "row" field (integer, starting at 1) — omitting it causes 422.
+- Free accounting dimensions on postings use: freeAccountingDimension1, freeAccountingDimension2, freeAccountingDimension3
+  NOT "accountingDimensionValue1", "freeDimension1", or "dimension1" — those all fail with 422.
 
 **Supplier invoice actions:**
 - GET /supplierInvoice?fields=id,invoiceNumber,amountCurrency,supplier → find invoices
@@ -122,6 +126,14 @@ Authentication is handled automatically — just call the tools.
 
 **Salary transaction** POST /salary/transaction:
 { date, payslips: [{ employee: {id} }] }
+
+**Accounting dimensions:**
+- POST /ledger/accountingDimensionName → { dimensionName (R), active: true } — create a free dimension (e.g. "Kostsenter")
+- POST /ledger/accountingDimensionValue → { displayName (R), dimensionIndex (R), active: true, showInVoucherRegistration: true }
+  dimensionIndex: 1 for the first dimension, 2 for second, 3 for third
+- GET /ledger/accountingDimensionName?fields=id,dimensionName — list existing dimensions
+- GET /ledger/accountingDimensionValue?fields=id,displayName,dimensionIndex — list values
+- To link a dimension value to a voucher posting, use freeAccountingDimension1/2/3: {id} on each posting
 
 ## Common task flows
 
