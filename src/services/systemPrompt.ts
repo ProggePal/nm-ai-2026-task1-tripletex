@@ -63,8 +63,9 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
      ALWAYS include these fields:
      - workingHoursScheme: "NOT_SHIFT" (standard), "ROUND_THE_CLOCK", "SHIFT_365", "OFFSHORE_336"
      - employmentType: "ORDINARY" (fast ansatt), "MARITIME", "FREELANCE", "OTHER"
-     - remunerationType: {id: 100} for Fastlønn, {id: 101} for Timelønn — OBJECT {id}, NOT string
-     - occupationCode: if the PDF mentions a STYRK code, look it up with GET /employee/employment/occupationCode?code=XXXX
+     - remunerationType: integer! 1=MONTHLY_WAGE (fastlønn), 2=HOURLY_WAGE (timelønn). Default to 1.
+     - occupationCode: look up with GET /employee/employment/occupationCode?nameNO=XXX or ?code=XXXX. Pass as {id: occupationCodeId}.
+       If the PDF mentions a STYRK code or job title, search for it.
   3. \`await tripletex_post("/employee/standardTime", {"employee": {"id": empId}, "hoursPerDay": 7.5, "fromDate": "YYYY-MM-DD"})\`
      Sets standard daily work hours (7.5 = standard Norwegian workday).
 
