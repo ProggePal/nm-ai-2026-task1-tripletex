@@ -26,21 +26,11 @@ export function extractCode(responseText: string): string {
  * Handles: (x: any) => ..., (x: string, y: number), function(x: Type), etc.
  */
 function stripTypeAnnotations(code: string): string {
-  // Remove type annotations from arrow function and function parameters: (x: Type) → (x)
-  // Matches `: SomeType` after parameter names inside parentheses
-  let result = code;
-
-  // Remove `: type` annotations in function params — handles any, string, number, Type, Type[], etc.
-  // Pattern: word followed by colon and type, within param context
-  result = result.replace(/(\w)\s*:\s*(?:any|string|number|boolean|void|unknown|never|null|undefined|Record<[^>]*>|Array<[^>]*>|\w+(?:\[\])?)\s*(?=[,)\]=])/g, '$1');
-
-  // Remove `as Type` casts
-  result = result.replace(/\bas\s+(?:any|string|number|boolean|\w+(?:\[\])?)\b/g, '');
-
-  // Remove interface/type declarations (full lines)
-  result = result.replace(/^(?:interface|type)\s+\w+\s*(?:=\s*)?{[^}]*}\s*;?\s*$/gm, '');
-
-  return result;
+  // Conservative: only strip known TS type annotations in function/arrow params
+  // Pattern: after ( or , + identifier + : type — NOT object properties like { number: 1920 }
+  return code
+    .replace(/([(,]\s*\w+)\s*:\s*(?:any|string|number|boolean|void|unknown|never|null|undefined)(\s*[,)=])/g, '$1$2')
+    .replace(/\s+as\s+any\b/g, '');
 }
 
 export async function executeCode(
