@@ -159,13 +159,23 @@ export async function runAgent(
       params.container = containerId;
     }
 
-    // Use streaming to avoid SDK timeout
+    // Use streaming — collect raw response for container field
     const stream = claude.messages.stream(params);
+
+    // Listen for message_start to capture container
+    stream.on('message', (msg: any) => {
+      if (msg.container?.id) {
+        containerId = msg.container.id;
+        console.log(`[AGENT] Container: ${containerId}`);
+      }
+    });
+
     const response = await stream.finalMessage() as any;
 
-    // Track container for reuse
+    // Also check finalMessage for container
     if (response.container?.id) {
       containerId = response.container.id;
+      console.log(`[AGENT] Container (from finalMessage): ${containerId}`);
     }
 
     // Log activity
