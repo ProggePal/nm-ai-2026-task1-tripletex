@@ -88,11 +88,14 @@ Authentication is handled automatically — just call the tools.
   The IDs are company-specific — ALWAYS call GET /invoice/paymentType first, never guess IDs.
 
 **Travel expense** POST /travelExpense:
-{ employee: {id} (R), title, travelDetails: { departureDate, returnDate }, project: {id}, department: {id} }
+{ employee: {id} (R), title, travelDetails: { departureDate, returnDate, departureFrom, destination, purpose }, project: {id}, department: {id} }
 - Only employee is REQUIRED. title is the display name.
-- CRITICAL: If adding per diem, you MUST include travelDetails with departureDate and returnDate
-  at creation time. These cannot be added later (update fails). So always include them:
-  { employee: {id}, title: "...", travelDetails: { departureDate: "YYYY-MM-DD", returnDate: "YYYY-MM-DD" } }
+- CRITICAL: You MUST include travelDetails at creation time (cannot be added later). Include ALL fields:
+  { employee: {id}, title: "...", travelDetails: {
+    departureDate: "YYYY-MM-DD", returnDate: "YYYY-MM-DD",
+    departureFrom: "City name", destination: "City name", purpose: "Trip purpose description"
+  } }
+  Missing departureFrom/destination/purpose causes deliver to fail with 422.
 - Search: GET /travelExpense?employeeId={id}&fields=id,title,date,state
 
 **TravelExpense cost** POST /travelExpense/cost:
@@ -106,10 +109,14 @@ Authentication is handled automatically — just call the tools.
 - IMPORTANT: Create costs ONE AT A TIME, sequentially. Parallel creation causes 409 RevisionException.
 
 **Per diem (diett/dagpenger)** POST /travelExpense/perDiemCompensation:
-{ travelExpense: {id} (R), rateCategory: {id} (R), location, count, overnightAccommodation }
-- rateCategory is REQUIRED — look up with tripletex_travel_expense_rate_category_search.
-  Use tripletex_travel_expense_rate_category_group_search first to find the group for domestic travel (isForeignTravel=false).
-  Then tripletex_travel_expense_rate_category_search with type=PER_DIEM&travelReportRateCategoryGroupId={groupId}&fields=id,name
+{ travelExpense: {id} (R), rateCategory: {id} (R), rateType: {id} (R), location, count, overnightAccommodation }
+- rateCategory AND rateType are BOTH REQUIRED for delivery to succeed.
+- Look up rateCategory:
+  1. tripletex_travel_expense_rate_category_group_search?isForeignTravel=false → get group id
+  2. tripletex_travel_expense_rate_category_search?type=PER_DIEM&travelReportRateCategoryGroupId={groupId}&fields=id,name → get rateCategory id
+- Look up rateType:
+  3. tripletex_travel_expense_rate_search?rateCategoryId={rateCategoryId}&type=PER_DIEM&fields=id,name → get rateType id
+  Use the FIRST result's id as rateType: {id}
 - NEVER use countryCode — it causes "Country not enabled for travel expense" error.
 - NEVER use zone or requiresZone — these fields don't work as expected.
 - overnightAccommodation: "HOTEL", "BOARDING_HOUSE_WITHOUT_COOKING", "BOARDING_HOUSE_WITH_COOKING", "NONE"
@@ -123,13 +130,14 @@ Authentication is handled automatically — just call the tools.
 1. tripletex_employee_search — find employee
 2. tripletex_travel_expense_payment_type_search?showOnEmployeeExpenses=true — find payment type
 3. tripletex_travel_expense_rate_category_group_search?isForeignTravel=false — find domestic group
-4. tripletex_travel_expense_rate_category_search?type=PER_DIEM&travelReportRateCategoryGroupId={groupId} — find per diem rate
-5. tripletex_travel_expense_cost_category_search?showOnEmployeeExpenses=true&fields=id,description — find cost categories
-6. tripletex_travel_expense_create with travelDetails (departureDate + returnDate)
-7. tripletex_travel_expense_per_diem_compensation_create with rateCategory: {id} — do NOT pass countryCode
-8. tripletex_travel_expense_cost_create for each cost — include costCategory: {id} from step 5
-9. tripletex_travel_expense_deliver?id={travelExpenseId} — deliver the travel expense
-Do steps 1-5 in parallel to save time.
+4. tripletex_travel_expense_cost_category_search?showOnEmployeeExpenses=true&fields=id,description — find cost categories
+Do steps 1-4 in parallel.
+5. tripletex_travel_expense_rate_category_search?type=PER_DIEM&travelReportRateCategoryGroupId={groupId}&fields=id,name — find per diem rate category (needs group from step 3)
+6. tripletex_travel_expense_rate_search?rateCategoryId={rateCategoryId}&type=PER_DIEM&fields=id,name — find rateType (needs rateCategory from step 5)
+7. tripletex_travel_expense_create with travelDetails { departureDate, returnDate, departureFrom, destination, purpose }
+8. tripletex_travel_expense_per_diem_compensation_create with rateCategory: {id} AND rateType: {id} — do NOT pass countryCode
+9. tripletex_travel_expense_cost_create for each cost — include costCategory: {id} from step 4
+10. tripletex_travel_expense_deliver?id={travelExpenseId} — deliver the travel expense
 
 **Project** POST /project:
 { name, number, projectManager: {id} (R), startDate (R), customer: {id}, endDate,
@@ -255,11 +263,12 @@ When asked to invoice a percentage of a fixed-price project:
 
 **Travel expense full flow:**
 1. Parallel lookups: employee, payment types, rate category groups, cost categories
-2. POST /travelExpense → { employee: {id}, title, travelDetails: {departureDate, returnDate} }
-3. POST /travelExpense/perDiemCompensation (if per diem needed) — with rateCategory:{id}, NO countryCode
-4. POST /travelExpense/cost for each cost — with costCategory:{id}, paymentType:{id}
-5. POST /travelExpense/mileageAllowance (if mileage needed)
-6. PUT /travelExpense/:deliver?id={id} — deliver the expense report
+2. Sequential: rate_category_search (needs group), then rate_search (needs rateCategory → gives rateType)
+3. POST /travelExpense → { employee: {id}, title, travelDetails: {departureDate, returnDate, departureFrom, destination, purpose} }
+4. POST /travelExpense/perDiemCompensation — with rateCategory:{id} AND rateType:{id}, NO countryCode
+5. POST /travelExpense/cost for each cost — with costCategory:{id}, paymentType:{id}
+6. POST /travelExpense/mileageAllowance (if mileage needed)
+7. PUT /travelExpense/:deliver?id={id} — deliver the expense report
 
 **Approve/pay supplier invoice:**
 1. GET /supplierInvoice?fields=id,amountCurrency,supplier → find invoice
