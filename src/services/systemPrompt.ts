@@ -59,9 +59,12 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
 - To create employment (3 steps):
   1. \`await tripletex_post("/employee/employment", {"employee": {"id": empId}, "startDate": "YYYY-MM-DD"})\`
      Do NOT include employmentType, jobTitle, or occupationCode here — they don't exist on this endpoint.
-  2. \`await tripletex_post("/employee/employment/details", {"employment": {"id": empId}, "date": "YYYY-MM-DD", "percentageOfFullTimeEquivalent": 100, "annualSalary": N, "workingHoursScheme": "NOT_SHIFT"})\`
-     workingHoursScheme: "NOT_SHIFT" (standard office), "ROUND_THE_CLOCK", "SHIFT_365", "OFFSHORE_336". Default to "NOT_SHIFT".
-     remunerationType: use {id: 100} for Fastlønn, {id: 101} for Timelønn — it's an OBJECT {id}, NOT a string.
+  2. \`await tripletex_post("/employee/employment/details", {"employment": {"id": empId}, "date": "YYYY-MM-DD", "percentageOfFullTimeEquivalent": 100, "annualSalary": N, "workingHoursScheme": "NOT_SHIFT", "employmentType": "ORDINARY", "remunerationType": {"id": 100}})\`
+     ALWAYS include these fields:
+     - workingHoursScheme: "NOT_SHIFT" (standard), "ROUND_THE_CLOCK", "SHIFT_365", "OFFSHORE_336"
+     - employmentType: "ORDINARY" (fast ansatt), "MARITIME", "FREELANCE", "OTHER"
+     - remunerationType: {id: 100} for Fastlønn, {id: 101} for Timelønn — OBJECT {id}, NOT string
+     - occupationCode: if the PDF mentions a STYRK code, look it up with GET /employee/employment/occupationCode?code=XXXX
   3. \`await tripletex_post("/employee/standardTime", {"employee": {"id": empId}, "hoursPerDay": 7.5, "fromDate": "YYYY-MM-DD"})\`
      Sets standard daily work hours (7.5 = standard Norwegian workday).
 
