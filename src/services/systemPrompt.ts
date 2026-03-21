@@ -47,10 +47,10 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
 - Do NOT include bankAccounts in the create body — add bank accounts separately after creation.
 
 **Employee** POST /employee:
-{ firstName, lastName, email, department: {id} (R), userType (R),
-  employeeNumber, phoneNumberMobile, dateOfBirth,
+{ firstName (R), lastName (R), email (R), department: {id} (R), userType (R), dateOfBirth (R),
+  employeeNumber, phoneNumberMobile,
   address: { addressLine1, postalCode, city } }
-- CRITICAL: department and userType are REQUIRED — omitting them returns 422.
+- CRITICAL: ALL SIX are REQUIRED: firstName, lastName, email, department:{id}, userType, dateOfBirth.
 - userType values: "STANDARD", "EXTENDED", "NO_ACCESS". Use "STANDARD" for normal employees.
   For admin/kontoadministrator: use "STANDARD" and grant entitlements:
   \`api.put('/employee/entitlement/:grantEntitlementsByTemplate', {}, { employeeId: empId, template: 'ALL_PRIVILEGES' })\`
@@ -125,18 +125,20 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
 **Per diem** POST /travelExpense/perDiemCompensation:
 { travelExpense: {id} (R), rateCategory: {id} (R), rateType: {id} (R), location, count, overnightAccommodation }
 - rateCategory AND rateType BOTH REQUIRED for delivery.
-- Look up: GET /travelExpense/rateCategoryGroup?isForeignTravel=false → pick CURRENT year group (highest id)
-  → GET /travelExpense/rateCategory?type=PER_DIEM&travelReportRateCategoryGroupId={groupId}
-  → GET /travelExpense/rate?rateCategoryId={id}&type=PER_DIEM → use first result as rateType
+- rateType.id = SAME as rateCategory.id (no separate lookup needed!)
+- location is REQUIRED (e.g. "Oslo", "Bergen")
+- Look up rateCategory:
+  GET /travelExpense/rateCategoryGroup?isForeignTravel=false → pick CURRENT year group (highest id, e.g. id=42 for 2026)
+  GET /travelExpense/rateCategory?type=PER_DIEM&travelReportRateCategoryGroupId={groupId}&fields=id,name
+  Then set BOTH rateCategory: {id: X} AND rateType: {id: X} with the SAME id.
 - NEVER use countryCode. Do NOT pass rate — let Tripletex calculate it.
 - overnightAccommodation: "HOTEL"|"NONE"|"BOARDING_HOUSE_WITHOUT_COOKING"|"BOARDING_HOUSE_WITH_COOKING"
 - Valid fields for rateCategory: id,name (NOT description — causes 400)
-- Valid fields for rate: id,name (NOT description — causes 400)
 
 **MileageAllowance** POST /travelExpense/mileageAllowance:
 { travelExpense: {id} (R), date (R), departureLocation (R), destination (R), km, isCompanyCar }
 
-**Travel expense deliver:** \`api.put('/travelExpense/:deliver', {}, { id: travelExpenseId })\`
+**Travel expense deliver:** \`await tripletex_put("/travelExpense/:deliver", {}, {"id": travelExpenseId})\`
 
 **Project** POST /project:
 { name, number, projectManager: {id} (R), startDate (R), customer: {id}, endDate,
@@ -145,7 +147,9 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
   \`api.put('/employee/entitlement/:grantEntitlementsByTemplate', {}, { employeeId, template: 'ALL_PRIVILEGES' })\`
 
 **Project activity** — link activity to project:
-  \`api.post('/project/{projectId}/projectActivity', { name: "Activity name", activityType: "PROJECT_GENERAL_ACTIVITY" })\`
+  \`await tripletex_post("/project/projectActivity", {"project": {"id": projectId}, "name": "Activity name", "activityType": "PROJECT_GENERAL_ACTIVITY"})\`
+  PATH IS /project/projectActivity (NOT /project/{id}/projectActivity — that returns 404!)
+  Pass project as {"id": N} in the body.
   Do NOT use POST /activity — that creates standalone activities not linked to projects.
 
 **Department** POST /department: { name (R), departmentNumber, departmentManager: {id} }
@@ -158,6 +162,7 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
 - CRITICAL: Postings to account 1500 (kundefordringer) REQUIRE customer: {id} on the posting.
   Postings to account 2400 (leverandørgjeld) REQUIRE supplier: {id} on the posting.
   Omitting these causes 422 "Kunde mangler" / "Leverandør mangler".
+- Invoice vouchers CANNOT be reversed — use credit notes instead (PUT /invoice/{id}/:createCreditNote).
 - CORRECTION VOUCHERS:
   - Do NOT add vatType on correction postings unless correcting VAT specifically.
   - Use the SAME counter-account as the original voucher.
@@ -268,7 +273,7 @@ Supplier invoice: GET /supplierInvoice?invoiceDateFrom&invoiceDateTo (BOTH REQUI
 Supplier invoice approve: PUT /supplierInvoice/{id}/:approve
 Supplier invoice payment: POST /supplierInvoice/{id}/:addPayment {paymentType,amount,paymentDate}
 Project: GET/POST /project, GET/PUT /project/{id}
-Project activity: POST /project/{projectId}/projectActivity {name,activityType}
+Project activity: POST /project/projectActivity {project:{id},name,activityType} (NOT /project/{id}/projectActivity!)
 Activity: GET /activity, GET /activity/>forTimeSheet?projectId={id}
 Timesheet: POST /timesheet/entry, GET /timesheet/entry, PUT/DELETE /timesheet/entry/{id}
 Timesheet month: PUT /timesheet/month/:approve?employeeIds={id}&monthYear=YYYY-MM-01
