@@ -215,13 +215,16 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
   - "wrong amount": post difference to same expense + same counter-account.
   - "duplicate": \`api.put('/ledger/voucher/{id}/:reverse')\`
 
-**Register supplier invoice — use VOUCHER (not BETA incomingInvoice):**
+**Register supplier invoice / receipt — try incomingInvoice FIRST:**
 1. Find/create supplier: GET /supplier?organizationNumber=X or POST /supplier
-2. Find expense account + accounts payable (2400) + incoming VAT type
-3. POST /ledger/voucher with postings:
+2. Find expense account ID and incoming VAT type ID
+3. TRY: POST /incomingInvoice?sendTo=ledger with body:
+   {"invoiceHeader": {"vendorId": supplierId, "invoiceDate": "YYYY-MM-DD", "invoiceNumber": "INV-XXX", "invoiceAmount": grossAmount, "description": "..."}, "orderLines": [{"externalId": "1", "description": "...", "accountId": expenseAccountId, "vatTypeId": incomingVatId, "departmentId": deptId}]}
+   This creates a proper supplier invoice visible via GET /supplierInvoice.
+4. IF 403 (module not enabled), FALL BACK to voucher:
+   POST /ledger/voucher with postings:
    - Row 1: expense account, amount = NET, vatType = incoming VAT {id}
-   - Row 2: account 2400, amount = -GROSS, supplier: {id} ← CRITICAL: MUST include supplier:{id} or the invoice won't be linked!
-   Tripletex auto-calculates VAT. Do NOT add manual VAT row.
+   - Row 2: account 2400, amount = -GROSS, supplier: {id} ← MUST include supplier:{id}!
    Include vendorInvoiceNumber on the voucher.
 
 **Supplier invoice actions:**
