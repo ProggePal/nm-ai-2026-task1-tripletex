@@ -239,6 +239,20 @@ POST /salary/transaction → create salary voucher:
 - GET /ledger/accountingDimensionValue?fields=id,displayName,dimensionIndex — list values
 - To link a dimension value to a voucher posting, use freeAccountingDimension1/2/3: {id} on each posting
 
+## Norwegian accounting conventions
+- **Accumulated depreciation accounts**: In Norwegian accounting, asset accounts use the pattern:
+  Asset account 12X0 → Accumulated depreciation 12X9 (e.g. 1200→1209, 1210→1219, 1230→1239, 1240→1249, 1250→1259)
+  If the account doesn't exist, CREATE it before posting.
+- **Depreciation posting**: Debit 6010 (avskrivningskostnad), Credit the accumulated depreciation account (12X9).
+  NEVER credit the asset account directly — always use the accumulated depreciation account.
+- **Linear monthly depreciation**: acquisitionCost / usefulLifeYears / 12 = monthly amount
+- **Accrual reversal (forskuddsbetalt)**: When reversing prepaid costs from account 1700/1710:
+  The expense account depends on what the prepayment was for. Check existing vouchers/postings on 1700/1710
+  to find the matching expense account. If not clear, look for the corresponding expense account in the 6000-7999 range.
+- **Salary provision**: Debit salary expense (5000), Credit accrued salary (2900/2910).
+  If the amount is not specified in the task, look at existing salary postings or the balance sheet to determine the correct amount.
+- **Trial balance check**: GET /balanceSheet — the sum of all balanceOut should be 0.
+
 ## Common task flows
 
 **Create customer with address:**
