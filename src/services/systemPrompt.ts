@@ -223,12 +223,23 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
   - "wrong amount": post difference to same expense + same counter-account.
   - "duplicate": \`api.put('/ledger/voucher/{id}/:reverse')\`
 
-**Register supplier invoice / receipt — ALWAYS use the create_supplier_invoice compound tool:**
-For ANY supplier invoice or receipt task, call \`await create_supplier_invoice({supplierName, supplierOrgNumber, invoiceNumber, grossAmount, expenseAccountNumber, vatRate, date})\`.
-This tool handles incomingInvoice creation automatically (creates a proper supplierInvoice entity that the system can verify).
-If the compound tool is not available, follow the manual steps below:
+**Register supplier invoice / receipt — CRITICAL:**
+ALWAYS try POST /incomingInvoice FIRST. This creates a proper supplierInvoice that the system can find.
+\`\`\`python
+# ALWAYS try this first for supplier invoices and receipts:
+try:
+    result = await tripletex_post("/incomingInvoice", {
+        "invoiceHeader": {"vendorId": supplier_id, "invoiceDate": date, "invoiceNumber": inv_num, "invoiceAmount": gross_amount, "description": desc},
+        "orderLines": [{"externalId": "1", "description": line_desc, "accountId": expense_account_id, "vatTypeId": incoming_vat_id, "departmentId": dept_id}]
+    }, {"sendTo": "ledger"})
+    print("Created via incomingInvoice:", result)
+except Exception as e:
+    print("incomingInvoice failed, falling back to voucher:", e)
+    # Fallback: manual voucher (less ideal but works)
+\`\`\`
+If incomingInvoice returns 403, fall back to voucher with voucherType Leverandørfaktura:
 
-**Manual fallback — try incomingInvoice FIRST:**
+**Voucher fallback:**
 1. Find/create supplier: GET /supplier?organizationNumber=X or POST /supplier
 2. Find expense account ID and incoming VAT type ID
 3. TRY: POST /incomingInvoice?sendTo=ledger with body:
