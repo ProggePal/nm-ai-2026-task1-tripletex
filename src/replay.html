@@ -152,7 +152,7 @@ function renderRunList() {
     const errCls = r.errorCount > 0 ? 'has-errors' : '';
     const active = r.filename === currentFile ? 'active' : '';
     return `<div class="run-item ${active}" onclick="selectRun('${r.filename}')">
-      <div class="ri-time">${date} ${time}</div>
+      <div class="ri-time">${date} ${time} <span style="color:#484f58;font-size:9px;margin-left:4px">${r.filename.replace('result-','').replace('.json','').slice(0,19)}</span></div>
       <div class="ri-prompt">${esc(r.prompt.slice(0,80))}</div>
       <div class="ri-meta">
         <span class="ri-badge calls">${r.toolCallCount} calls</span>
@@ -174,7 +174,8 @@ async function selectRun(filename) {
     const data = await res.json();
     parseEvents(data);
 
-    document.getElementById('topTitle').textContent = esc(data.prompt?.slice(0,80) || 'Run');
+    const runId = filename.replace('result-','').replace('.json','');
+    document.getElementById('topTitle').textContent = runId + ' — ' + esc(data.prompt?.slice(0,60) || 'Run');
     document.getElementById('tModel').textContent = data.model || 'opus';
     document.getElementById('tCalls').textContent = (data.toolCallCount||0) + ' calls';
     document.getElementById('tTime').textContent = ((data.elapsedMs||0)/1000).toFixed(1) + 's';
