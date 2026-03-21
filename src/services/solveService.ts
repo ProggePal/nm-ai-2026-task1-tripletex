@@ -22,8 +22,23 @@ export const solveService = {
       .filter((f) => f.mime_type === 'application/pdf')
       .map((f) => ({ filename: f.filename, data: f.content_base64 }));
 
+    // Decode text/CSV files and append to prompt
+    let prompt = body.prompt;
+    const textFiles = (body.files ?? []).filter((f) =>
+      f.mime_type.startsWith('text/') || f.mime_type === 'application/csv'
+    );
+    for (const f of textFiles) {
+      try {
+        const decoded = Buffer.from(f.content_base64, 'base64').toString('utf-8');
+        prompt += `\n\n--- File: ${f.filename} ---\n${decoded}\n--- End of file ---`;
+        console.log(`[FILE] Decoded ${f.filename} (${decoded.length} chars) and appended to prompt`);
+      } catch (err) {
+        console.error(`[FILE ERROR] Failed to decode ${f.filename}:`, err);
+      }
+    }
+
     const result = await runAgent(
-      body.prompt,
+      prompt,
       body.tripletex_credentials,
       imageAttachments,
       pdfAttachments,
