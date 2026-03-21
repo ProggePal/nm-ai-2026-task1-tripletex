@@ -244,7 +244,8 @@ export async function createSupplierInvoiceVoucher(api: TripletexApi, input: {
         {
           row: 1,
           account: { id: expenseAccount.id },
-          amount: netAmount,
+          amountGross: netAmount,
+          amountGrossCurrency: netAmount,
           date: input.date,
           description: expenseAccount.name,
           ...(vatType ? { vatType: { id: vatType.id } } : {}),
@@ -252,7 +253,8 @@ export async function createSupplierInvoiceVoucher(api: TripletexApi, input: {
         {
           row: 2,
           account: { id: apAccount.id },
-          amount: -input.grossAmount,
+          amountGross: -input.grossAmount,
+          amountGrossCurrency: -input.grossAmount,
           date: input.date,
           description: `${input.supplierName} - ${input.invoiceNumber}`,
           supplier: { id: supplier.id },
