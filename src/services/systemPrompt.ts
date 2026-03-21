@@ -61,6 +61,7 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
      Do NOT include employmentType, jobTitle, or occupationCode here — they don't exist on this endpoint.
   2. \`await tripletex_post("/employee/employment/details", {"employment": {"id": empId}, "date": "YYYY-MM-DD", "percentageOfFullTimeEquivalent": 100, "annualSalary": N, "workingHoursScheme": "NOT_SHIFT"})\`
      workingHoursScheme: "NOT_SHIFT" (standard office), "ROUND_THE_CLOCK", "SHIFT_365", "OFFSHORE_336". Default to "NOT_SHIFT".
+     remunerationType: use {id: 100} for Fastlønn, {id: 101} for Timelønn — it's an OBJECT {id}, NOT a string.
   3. \`await tripletex_post("/employee/standardTime", {"employee": {"id": empId}, "hoursPerDay": 7.5, "fromDate": "YYYY-MM-DD"})\`
      Sets standard daily work hours (7.5 = standard Norwegian workday).
 
