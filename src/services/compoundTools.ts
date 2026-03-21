@@ -175,7 +175,7 @@ export async function createSupplierInvoiceVoucher(api: TripletexApi, input: {
   const vatRate = input.vatRate ?? 25;
   const netAmount = Math.round((input.grossAmount / (1 + vatRate / 100)) * 100) / 100;
 
-  // Parallel lookups
+  // Parallel lookups (including voucher type for Leverandørfaktura)
   const lookups = await Promise.all([
     input.supplierOrgNumber
       ? api.get('/supplier', { organizationNumber: input.supplierOrgNumber, fields: 'id,name' })
@@ -183,6 +183,7 @@ export async function createSupplierInvoiceVoucher(api: TripletexApi, input: {
     api.get('/ledger/account', { number: input.expenseAccountNumber, fields: 'id,number,name' }),
     api.get('/ledger/account', { number: 2400, fields: 'id,number,name' }),
     api.get('/ledger/vatType', { typeOfVat: 'INCOMING', fields: 'id,name,percentage' }),
+    api.get('/ledger/voucherType', { name: 'Leverandørfaktura', fields: 'id,name' }),
   ]);
 
   let supplier = input.supplierOrgNumber
@@ -206,6 +207,10 @@ export async function createSupplierInvoiceVoucher(api: TripletexApi, input: {
   // Find incoming VAT type matching rate
   const incomingVatTypes = lookups[3].values || [];
   const vatType = incomingVatTypes.find((v: any) => Math.abs(v.percentage - vatRate) < 0.1);
+
+  // Find voucher type for Leverandørfaktura (makes voucher appear as supplier invoice)
+  const voucherTypes = lookups[4]?.values || [];
+  const leverandorType = voucherTypes.find((v: any) => v.name === 'Leverandørfaktura');
 
   // Try incomingInvoice first (creates proper supplierInvoice), fall back to voucher
   let result: any;
@@ -234,6 +239,7 @@ export async function createSupplierInvoiceVoucher(api: TripletexApi, input: {
       date: input.date,
       description: `${input.supplierName} - ${input.invoiceNumber}`,
       vendorInvoiceNumber: input.invoiceNumber,
+      ...(leverandorType ? { voucherType: { id: leverandorType.id } } : {}),
       postings: [
         {
           row: 1,
