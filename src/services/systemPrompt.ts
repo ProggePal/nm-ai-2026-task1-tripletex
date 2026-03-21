@@ -174,8 +174,10 @@ Common OUTGOING VAT types (for invoices/sales):
 **TravelExpense cost** POST /travelExpense/cost:
 { travelExpense: {id} (R), costCategory: {id} (R), amountCurrencyIncVat (R), paymentType: {id} (R), date (R), category (string), comments }
 - ALL FIVE are REQUIRED. date MUST be set, otherwise deliver fails.
-- costCategory: look up with GET /travelExpense/costCategory?showOnEmployeeExpenses=true&fields=id,description
-  Pick best match. If no exact match (no "Fly" category), use "Annen kontorkostnad".
+- costCategory: look up with GET /travelExpense/costCategory?fields=id,description&count=100 (WITHOUT showOnEmployeeExpenses filter!)
+  The full list includes: Fly, Taxi, Hotell, Tog, Mat, Buss, Parkering, etc.
+  Pick the EXACT match: "Fly" for flights, "Taxi" for taxi, "Hotell" for hotel, "Tog" for train.
+  Only use "Annen kontorkostnad" if no specific category exists.
 - Create costs ONE AT A TIME sequentially. Parallel causes 409.
 
 **Per diem** POST /travelExpense/perDiemCompensation:
@@ -186,7 +188,13 @@ Common OUTGOING VAT types (for invoices/sales):
 - Look up rateCategory:
   GET /travelExpense/rateCategoryGroup?isForeignTravel=false → pick CURRENT year group (highest id, e.g. id=42 for 2026)
   GET /travelExpense/rateCategory?type=PER_DIEM&travelReportRateCategoryGroupId={groupId}&fields=id,name
+  Categories for domestic travel (innland):
+    "Dagsreise 6-12 timer" = day trip 6-12h (no overnight)
+    "Dagsreise over 12 timer" = day trip over 12h (no overnight)
+    "Overnatting over 12 timer" = overnight stay over 12h (use for multi-day trips!)
+  For multi-day trips with overnight: use "Overnatting over 12 timer - innland"
   Then set BOTH rateCategory: {id: X} AND rateType: {id: X} with the SAME id.
+- count = number of OVERNIGHT STAYS (not number of days). For a 4-day trip: count=3 (3 nights).
 - NEVER use countryCode.
 - If the task specifies a daily rate (e.g. "dagsats 800 kr"), pass rate: 800 to override the default.
   If no rate specified, omit the rate field and let Tripletex calculate it.
