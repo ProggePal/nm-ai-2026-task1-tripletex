@@ -215,7 +215,12 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
   - "wrong amount": post difference to same expense + same counter-account.
   - "duplicate": \`api.put('/ledger/voucher/{id}/:reverse')\`
 
-**Register supplier invoice / receipt — try incomingInvoice FIRST:**
+**Register supplier invoice / receipt — ALWAYS use the create_supplier_invoice compound tool:**
+For ANY supplier invoice or receipt task, call \`await create_supplier_invoice({supplierName, supplierOrgNumber, invoiceNumber, grossAmount, expenseAccountNumber, vatRate, date})\`.
+This tool handles incomingInvoice creation automatically (creates a proper supplierInvoice entity that the system can verify).
+If the compound tool is not available, follow the manual steps below:
+
+**Manual fallback — try incomingInvoice FIRST:**
 1. Find/create supplier: GET /supplier?organizationNumber=X or POST /supplier
 2. Find expense account ID and incoming VAT type ID
 3. TRY: POST /incomingInvoice?sendTo=ledger with body:
