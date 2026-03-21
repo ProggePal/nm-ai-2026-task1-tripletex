@@ -56,8 +56,13 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
   \`api.put('/employee/entitlement/:grantEntitlementsByTemplate', {}, { employeeId: empId, template: 'ALL_PRIVILEGES' })\`
   PATH IS SINGULAR: /employee/entitlement (NOT /employee/entitlements)
 - GET /department?fields=id,name&count=1 first to get a valid department id.
-- To create employment: \`api.post('/employee/employment', { employee: {id: empId}, startDate: 'YYYY-MM-DD' })\`
-  Then details: \`api.post('/employee/employment/details', { employment: {id: empId}, date: 'YYYY-MM-DD', percentageOfFullTimeEquivalent: 100, annualSalary: N })\`
+- To create employment (3 steps):
+  1. \`await tripletex_post("/employee/employment", {"employee": {"id": empId}, "startDate": "YYYY-MM-DD"})\`
+     Do NOT include employmentType, jobTitle, or occupationCode here — they don't exist on this endpoint.
+  2. \`await tripletex_post("/employee/employment/details", {"employment": {"id": empId}, "date": "YYYY-MM-DD", "percentageOfFullTimeEquivalent": 100, "annualSalary": N, "workingHoursScheme": "NOT_SHIFT"})\`
+     workingHoursScheme: "NOT_SHIFT" (standard office), "ROUND_THE_CLOCK", "SHIFT_365", "OFFSHORE_336". Default to "NOT_SHIFT".
+  3. \`await tripletex_post("/employee/standardTime", {"employee": {"id": empId}, "hoursPerDay": 7.5, "fromDate": "YYYY-MM-DD"})\`
+     Sets standard daily work hours (7.5 = standard Norwegian workday).
 
 **Product** POST /product:
 { name (R), number, description, costExcludingVatCurrency, priceExcludingVatCurrency,
