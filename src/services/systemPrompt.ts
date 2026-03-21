@@ -104,6 +104,23 @@ All tools are pre-authenticated. Use them inside code_execution Python code.
   Filter: invoiceDueDate < today AND amountOutstanding > 0
   NOTE: The field is "invoiceDueDate" (NOT "paymentDeadline" — that doesn't exist).
 
+**Foreign currency invoices:**
+  When the task specifies a specific exchange rate (e.g. "rate was 10.11 NOK/EUR"):
+  Create the order in NOK (not EUR) with the pre-converted amount: amount_NOK = amount_EUR × rate.
+  This ensures the invoice reflects the correct rate. Do NOT create EUR orders and rely on Tripletex's default rate.
+  For the payment at a different rate: register with paidAmount = amount_EUR × new_rate.
+  Book the disagio (exchange loss) or agio (exchange gain) manually:
+  - Disagio (loss): debit 8160 (Valutatap), credit 1500 (Kundefordringer)
+  - Agio (gain): debit 1500, credit 8060 (Valutagevinst)
+
+**Foreign currency payment params:**
+  For invoices in foreign currency, PUT /invoice/{id}/:payment requires BOTH:
+  - paidAmount: amount in NOK
+  - paidAmountCurrency: amount in foreign currency (e.g. EUR amount)
+  Omitting paidAmountCurrency causes 422.
+
+**VAT type number is a STRING** — always compare as string: number == "3" not number == 3.
+
 **CRITICAL — Invoice payment type lookup:**
   Use GET /invoice/paymentType (NOT /ledger/paymentTypeOut — that is for outgoing supplier payments).
   Pick the one with description containing "bank" or "Betalt til bank".
